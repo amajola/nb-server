@@ -13,7 +13,7 @@ const client = new Client({
   user: ENV.DB_USER,
   password: ENV.DB_PASSWORD,
   database: ENV.DB_NAME,
-  ssl: false,
+  ssl: true,
 });
 
 const c = await client.connect();

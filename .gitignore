@@ -1,0 +1,43 @@
+# Node dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
+dist/
+build/
+.tmp/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Bun caches
+bun-debug.log*
+bun-out/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage directory
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
