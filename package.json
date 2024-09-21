@@ -1,0 +1,35 @@
+{
+  "name": "server",
+  "scripts": {
+    "dev": "bun run --hot src/index.tsx",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "test": "bun test",
+    "coverage": "bun test --coverage",
+    "vite-dev": "vite"
+  },
+  "type": "module",
+  "dependencies": {
+    "@hono/zod-validator": "^0.2.2",
+    "@lucia-auth/adapter-drizzle": "^1.0.7",
+    "@node-rs/argon2": "^1.8.3",
+    "@trpc/client": "^11.0.0-rc.377",
+    "@trpc/server": "^11.0.0-rc.377",
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.31.2",
+    "drizzle-zod": "^0.5.1",
+    "faker": "^6.6.6",
+    "hono": "^4.4.2",
+    "lucia": "^3.2.0",
+    "oslo": "^1.2.0",
+    "pg": "^8.11.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.6",
+    "autoprefixer": "^10.4.19",
+    "drizzle-kit": "^0.22.7"
+  }
+}
