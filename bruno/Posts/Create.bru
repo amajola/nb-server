@@ -27,21 +27,23 @@ body:json {
 script:pre-request {
   const jar = bru.cookies.jar();
   
-  
-  // Grab the set-cookie header
-  const cookies = bru.getEnvVar("cookies");
-  if (cookies && cookies.length > 0) {
-    // Loop over each cookie
-    cookies.forEach((cookie) => {
-      const [pair] = cookie.split(";"); // key=value
+  const cookies = bru.getEnvVar("cookies"); // should be an array of set-cookie strings
+  if (cookies && Array.isArray(cookies)) {
+    const cookieObjects = cookies.map(cookieStr => {
+      const [pair] = cookieStr.split(";"); // key=value
       const [key, value] = pair.split("=");
-  
-      if (key && value) {
-        // Save each cookie as environment variable
-        bru.setEnvVar(key.trim(), decodeURIComponent(value.trim()));
-      }
+      return {
+        key: key.trim(),
+        value: decodeURIComponent(value.trim()),
+        path: "/",
+        httpOnly: true,
+        secure: false,
+      };
     });
+  
+    jar.setCookies("http://localhost:3000", cookieObjects);
   }
+  
   
   
   bru.setVar("qoute", bru.interpolate('{{$randomLoremSentence}}'));
