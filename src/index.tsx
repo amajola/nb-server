@@ -1,21 +1,37 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import Auth from "./routes/auth";
 import Post from "./routes/posts";
-import { SessionType } from "./routes/auth/schema";
-import z from "zod";
+import { auth } from "./lib/auth";
 import Top from "./client";
-import { cors } from "hono/cors";
 
 export type Variables = {
-  session: z.infer<typeof SessionType>;
-  authStatus: number;
-  authError: string;
+  user: typeof auth.$Infer.User | null;
+  session: typeof auth.$Infer.Session | null;
 };
 
 const app = new Hono<{ Variables: Variables }>();
 
 app.use("/*", cors());
-app.get("/", (c) => {
+
+// Mount Better Auth on all auth routes
+app.on(["GET", "POST"], "/api/auth/*", (c) => {
+  return auth.handler(c.req.raw);
+});
+
+// Optional: Add session middleware for protected routes
+app.use("*", async (c, next) => {
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+  });
+  
+  c.set("user", session?.user || null);
+  c.set("session", session?.session || null);
+  
+  await next();
+});
+
+app.get("/auth", (c) => {
   const messages = ["Good Morning", "Good Evening", "Good Night"];
   return c.html(<Top messages={messages} />);
 });

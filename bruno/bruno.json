@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "no-baddies-bru-collection",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  # Database service using the existing Dockerfile
+  db:
+    build:
+      context: ..
+      dockerfile: Docker/database/Dockerfile
+    container_name: my-database
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: ..
+      dockerfile: Docker/application/Dockerfile
+    container_name: my-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://myuser:mypassword@db:5432/mydb
+      DB_HOST: db
+      DB_USER: myuser
+      DB_PASSWORD: mypassword
+      DB_NAME: mydb
+      DB_PORT: "5432"
+      NODE_ENV: production
+
+volumes:
+  db_data:
