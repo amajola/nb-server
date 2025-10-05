@@ -12,7 +12,7 @@ import { z } from "zod";
 
 export const postTable = pgTable("post", {
   id: serial("id").primaryKey().notNull(),
-  userId: integer("user_id")
+  userId: text("user_id")
     .notNull()
     .references(() => userTable.id),
   qoute: text("title").notNull(),

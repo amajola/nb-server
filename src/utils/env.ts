@@ -2,12 +2,14 @@ import * as dotenv from 'dotenv';
 import { z } from 'zod';
 
 const envSchema = z.object({
-  DB_HOST:  z.string(),
+  DB_HOST: z.string(),
   DB_USER: z.string(),
   DB_PASSWORD: z.string(),
   DB_NAME: z.string(),
   DB_PORT: z.string(),
   NODE_ENV: z.enum(['development', 'production', 'test']),
+  BETTER_AUTH_SECRET: z.string().min(32), // Required for Better Auth
+  BETTER_AUTH_URL: z.string().url().optional(), // Optional, defaults to localhost in dev
 });
 
 // Load environment variables from .env file

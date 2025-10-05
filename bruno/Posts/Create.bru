@@ -1,0 +1,78 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:3000/posts/create
+  body: json
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{better-auth.session_token}}
+}
+
+body:json {
+  {
+    "qoute": "{{qoute}}",
+    "isCountDown": false,
+    "content": "{{content}}",
+    "countDownDate": null
+  }
+  
+}
+
+script:pre-request {
+  const jar = bru.cookies.jar();
+  
+  
+  // Grab the set-cookie header
+  const cookies = bru.getEnvVar("cookies");
+  if (cookies && cookies.length > 0) {
+    // Loop over each cookie
+    cookies.forEach((cookie) => {
+      const [pair] = cookie.split(";"); // key=value
+      const [key, value] = pair.split("=");
+  
+      if (key && value) {
+        // Save each cookie as environment variable
+        bru.setEnvVar(key.trim(), decodeURIComponent(value.trim()));
+      }
+    });
+  }
+  
+  
+  bru.setVar("qoute", bru.interpolate('{{$randomLoremSentence}}'));
+  bru.setVar("content", bru.interpolate('{{$randomLoremParagraph}}'));
+}
+
+tests {
+  test("should return 200 when creating a post", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should return the created post with correct fields", function () {
+    // ✅ response body exists
+    expect(res.body).to.exist;
+    expect(res.body.id).to.be.a("number");
+    expect(res.body.userId).to.equal(bru.getEnvVar("user_id"));
+  
+    // ✅ qoute and content match the request
+    expect(res.body.qoute).to.equal(bru.interpolate("{{qoute}}"));
+    expect(res.body.content).to.include(bru.interpolate("{{content}}"));
+  
+    // ✅ countdown fields
+    expect(res.body.isCountDown).to.be.false;
+    expect(res.body.countDownDate).to.be.null;
+  
+    // ✅ createdAt is an ISO timestamp
+    expect(res.body.createdAt).to.match(/^\d{4}-\d{2}-\d{2}T/);
+  });
+  
+}
+
+settings {
+  encodeUrl: false
+}
