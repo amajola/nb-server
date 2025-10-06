@@ -1,12 +1,12 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { insertPostSchema, postTable } from "./schema";
-import database from "../../utils/database";
-import { type Variables } from "../..";
+import { insertPostSchema, postTable } from "./schema.ts";
+import database from "../../utils/database.ts";
+import { type Variables } from "../../index.ts";
 import { createMiddleware } from "hono/factory";
 import { desc, eq } from "drizzle-orm";
-import { userTable } from "../auth/schema";
-import { auth } from "../../lib/auth";
+import { userTable } from "../auth/schema.ts";
+import { auth } from "../../lib/auth.ts";
 
 export const authProtected = createMiddleware(async (c, next) => {
   const session = await auth.api.getSession({
@@ -33,6 +33,9 @@ const Post = new Hono<{ Variables: Variables }>()
     }),
     async (c) => {
       const user = c.get("user");
+      if (!user) {
+        return c.json({ error: "User not found" }, 401);
+      }
       const input = c.req.valid("json");
 
       const [post] = await database
@@ -40,18 +43,24 @@ const Post = new Hono<{ Variables: Variables }>()
         .values({
           ...input,
           userId: user.id,
-          countDownDate:
-            input.isCountDown && input.countDownDate
-              ? new Date(input.countDownDate)
-              : null,
         })
         .returning();
 
-      return c.json(post);
+      return c.json({
+        post,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+        },
+      });
     },
   )
   .get("/", async (c) => {
     const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "User not found" }, 401);
+    }
 
     const posts = await database
       .select({
@@ -63,9 +72,7 @@ const Post = new Hono<{ Variables: Variables }>()
         post: {
           id: postTable.id,
           userId: postTable.userId,
-          qoute: postTable.qoute,
-          isCountDown: postTable.isCountDown,
-          countDownDate: postTable.countDownDate,
+          header: postTable.header,
           content: postTable.content,
           createdAt: postTable.createdAt,
         },

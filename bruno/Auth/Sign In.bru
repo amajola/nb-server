@@ -1,75 +1,59 @@
 meta {
   name: Sign In
   type: http
-  seq: 2
+  seq: 3
 }
 
 post {
-  url: http://localhost:3000/auth/signin
+  url: {{base_url}}/auth/api/auth/sign-in/email
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "name": "{{username}}",
     "email": "{{email}}",
     "password": "{{password}}"
   }
-  
 }
 
 script:post-response {
-  const jar = bru.cookies.jar();
+  // Better-auth returns data directly (not wrapped in response)
+  if (res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+    bru.setEnvVar("auth_token", res.body.token);
+  }
   
-  bru.setEnvVar("token", res.body.response.token)
-  bru.setEnvVar("cookies", res.body.headers["set-cookie"])
-  
-  bru.setEnvVar("auth_token", res.body.response.token);
-  bru.setEnvVar("user_id", res.body.response.user.id);
-  bru.setEnvVar("user_email", res.body.response.user.email);
-  bru.setEnvVar("user_name", res.body.response.user.name);
+  if (res.body.user) {
+    bru.setEnvVar("user_id", res.body.user.id);
+    bru.setEnvVar("user_email", res.body.user.email);
+    bru.setEnvVar("user_name", res.body.user.name);
+  }
 }
 
 tests {
-  // ---------------------------
-  // 1. Check status code
-  // ---------------------------
   test("status should be 200", function () {
     expect(res.getStatus()).to.equal(200);
   });
   
-  // ---------------------------
-  // 2. Validate response body
-  // ---------------------------
   test("response should have token and user info", function () {
-    const body = res.body.response;
+    const body = res.body;
   
     expect(body).to.exist;
     expect(body.token).to.exist;
     expect(body.user).to.exist;
   
-    // Validate user fields
     expect(body.user.id).to.be.a("string");
     expect(body.user.email).to.equal(bru.interpolate("{{email}}").toLowerCase());
     expect(body.user.name).to.equal(bru.interpolate("{{username}}"));
   });
   
-  // ---------------------------
-  // 3. Extract and save cookies
-  // ---------------------------
-  const cookies = res.headers["set-cookie"];
-  if (cookies && cookies.length > 0) {
-    cookies.forEach((cookie) => {
-      const [pair] = cookie.split(";");
-      const [key, value] = pair.split("=");
-      if (key && value) {
-        // Save each cookie as environment variable
-        bru.setEnvVar(key.trim(), value.trim());
-      }
-    });
-  }
-  
+  test("should set session cookie", function () {
+    const cookies = res.headers["set-cookie"];
+    expect(cookies).to.exist;
+    expect(cookies).to.be.an("array");
+    expect(cookies[0]).to.include("better-auth.session_token");
+  });
 }
 
 settings {

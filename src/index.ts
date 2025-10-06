@@ -1,13 +1,12 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import Auth from "./routes/auth";
-import Post from "./routes/posts";
-import { auth } from "./lib/auth";
-import Top from "./client";
+import Auth from "./routes/auth/index.ts";
+import Post from "./routes/posts/index.ts";
+import { auth } from "./lib/auth.ts";
 
 export type Variables = {
-  user: typeof auth.$Infer.User | null;
-  session: typeof auth.$Infer.Session | null;
+  user: typeof auth.$Infer.Session.user | null;
+  session: typeof auth.$Infer.Session.session | null;
 };
 
 const app = new Hono<{ Variables: Variables }>();
@@ -24,19 +23,19 @@ app.use("*", async (c, next) => {
   const session = await auth.api.getSession({
     headers: c.req.raw.headers,
   });
-  
+
   c.set("user", session?.user || null);
   c.set("session", session?.session || null);
-  
-  await next();
-});
 
-app.get("/auth", (c) => {
-  const messages = ["Good Morning", "Good Evening", "Good Night"];
-  return c.html(<Top messages={messages} />);
+  await next();
 });
 
 const routes = app.route("/auth", Auth).route("/posts", Post);
 
 export type AppType = typeof routes;
-export default app;
+
+// Export default with fetch for Deno.serve
+export default {
+  fetch: app.fetch,
+  port: Number(Deno.env.get("PORT")) || 8000,
+};

@@ -1,8 +1,8 @@
 import { relations } from "drizzle-orm";
-import { integer, pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { postTable } from "../posts/schema";
+import { postTable } from "../posts/schema.ts";
 
 // Updated for Better Auth compatibility
 export const userTable = pgTable("user", {
@@ -24,14 +24,18 @@ export const sessionTable = pgTable("session", {
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
   ipAddress: text("ipAddress"),
   userAgent: text("userAgent"),
-  userId: text("userId").notNull().references(() => userTable.id),
+  userId: text("userId")
+    .notNull()
+    .references(() => userTable.id),
 });
 
 export const accountTable = pgTable("account", {
   id: text("id").primaryKey(),
   accountId: text("accountId").notNull(),
   providerId: text("providerId").notNull(),
-  userId: text("userId").notNull().references(() => userTable.id),
+  userId: text("userId")
+    .notNull()
+    .references(() => userTable.id),
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
   idToken: text("idToken"),

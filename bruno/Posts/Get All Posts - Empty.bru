@@ -1,0 +1,31 @@
+meta {
+  name: Get All Posts - Empty
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/posts
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{token}}
+}
+
+tests {
+  test("should return 200 even with no posts", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should return empty array when user has no posts", function () {
+    expect(res.body).to.exist;
+    expect(res.body.posts).to.be.an("array");
+    expect(res.body.error).to.be.null;
+  });
+}
+
+settings {
+  encodeUrl: false
+}
