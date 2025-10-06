@@ -1,12 +1,10 @@
 import {
-  boolean,
-  integer,
   pgTable,
   serial,
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
-import { userTable } from "../auth/schema";
+import { userTable } from "../auth/schema.ts";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -15,12 +13,7 @@ export const postTable = pgTable("post", {
   userId: text("user_id")
     .notNull()
     .references(() => userTable.id),
-  qoute: text("title").notNull(),
-  isCountDown: boolean("is_count_down").notNull(),
-  countDownDate: timestamp("count_down_date", {
-    withTimezone: true,
-    mode: "date",
-  }),
+  header: text("header").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", {
     withTimezone: true,
@@ -34,16 +27,11 @@ export const PostType = createInsertSchema(postTable)
   .required()
   .extend({
     createdAt: z.string(),
-    countDownDate: z.string().or(z.null()),
   });
 
 export type PostTypeInfer = z.infer<typeof PostType>;
 
-export const insertPostSchema = createInsertSchema(postTable, {
-  countDownDate: z.string(),
-}).pick({
-  qoute: true,
+export const insertPostSchema = createInsertSchema(postTable).pick({
+  header: true,
   content: true,
-  isCountDown: true,
-  countDownDate: true,
 });

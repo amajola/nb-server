@@ -1,0 +1,51 @@
+meta {
+  name: Get All Posts
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/posts
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{token}}
+}
+
+tests {
+  test("should return 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should return posts array with user info", function () {
+    expect(res.body).to.exist;
+    expect(res.body.posts).to.be.an("array");
+    expect(res.body.error).to.be.null;
+    
+    // If there are posts, validate structure
+    if (res.body.posts.length > 0) {
+      const firstPost = res.body.posts[0];
+      
+      expect(firstPost.post).to.exist;
+      expect(firstPost.user).to.exist;
+      
+      // Validate post fields
+      expect(firstPost.post.id).to.be.a("number");
+      expect(firstPost.post.userId).to.equal(bru.getEnvVar("user_id"));
+      expect(firstPost.post.header).to.be.a("string");
+      expect(firstPost.post.content).to.be.a("string");
+      expect(firstPost.post.createdAt).to.match(/^\d{4}-\d{2}-\d{2}T/);
+      
+      // Validate user fields
+      expect(firstPost.user.id).to.equal(bru.getEnvVar("user_id"));
+      expect(firstPost.user.email).to.equal(bru.getEnvVar("user_email"));
+      expect(firstPost.user.name).to.equal(bru.getEnvVar("user_name"));
+    }
+  });
+}
+
+settings {
+  encodeUrl: false
+}

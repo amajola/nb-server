@@ -1,0 +1,43 @@
+meta {
+  name: Get Session
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/auth/api/auth/get-session
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{token}}
+}
+
+tests {
+  test("status should be 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should return session with user info", function () {
+    const body = res.body;
+  
+    expect(body).to.exist;
+    expect(body.session).to.exist;
+    expect(body.user).to.exist;
+  
+    // Validate session fields
+    expect(body.session.userId).to.equal(bru.getEnvVar("user_id"));
+    expect(body.session.token).to.be.a("string");
+    expect(body.session.expiresAt).to.be.a("string");
+  
+    // Validate user fields
+    expect(body.user.id).to.equal(bru.getEnvVar("user_id"));
+    expect(body.user.email).to.equal(bru.getEnvVar("user_email"));
+    expect(body.user.name).to.equal(bru.getEnvVar("user_name"));
+  });
+}
+
+settings {
+  encodeUrl: true
+}

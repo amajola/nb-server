@@ -1,27 +1,25 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { ENV } from "./env";
-import { userTable, sessionTable, accountTable, verificationTable } from "../routes/auth/schema";
-import { Client } from "pg";
-import { postTable } from "../routes/posts/schema";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { ENV } from "./env.ts";
+import { userTable, sessionTable, accountTable, verificationTable } from "../routes/auth/schema.ts";
+import postgres from "postgres";
+import { postTable } from "../routes/posts/schema.ts";
 
-const client = new Client({
-  host: ENV.DB_HOST,
-  port: Number(ENV.DB_PORT),
-  user: ENV.DB_USER,
-  password: ENV.DB_PASSWORD,
-  database: ENV.DB_NAME,
-  ssl: ENV.NODE_ENV === "production" ? true : false,
+const connectionString = `postgres://${ENV?.DB_USER}:${ENV?.DB_PASSWORD}@${ENV?.DB_HOST}:${ENV?.DB_PORT}/${ENV?.DB_NAME}`;
+
+const sql = postgres(connectionString, {
+  ssl: false, // SSL disabled for local/containerized postgres
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
 });
 
-const c = await client.connect();
-
-export const database = drizzle(client, {
-  schema: { 
+export const database = drizzle(sql, {
+  schema: {
     user: userTable,
-    session: sessionTable, 
+    session: sessionTable,
     account: accountTable,
     verification: verificationTable,
-    post: postTable 
+    post: postTable
   },
 });
 

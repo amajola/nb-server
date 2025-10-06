@@ -5,48 +5,24 @@ meta {
 }
 
 post {
-  url: http://localhost:3000/posts/create
+  url: {{base_url}}/posts/create
   body: json
   auth: inherit
 }
 
 headers {
-  Cookie: better-auth.session_token={{better-auth.session_token}}
+  Cookie: better-auth.session_token={{token}}
 }
 
 body:json {
   {
-    "qoute": "{{qoute}}",
-    "isCountDown": false,
-    "content": "{{content}}",
-    "countDownDate": null
+    "header": "{{header}}",
+    "content": "{{content}}"
   }
-  
 }
 
 script:pre-request {
-  const jar = bru.cookies.jar();
-  
-  const cookies = bru.getEnvVar("cookies"); // should be an array of set-cookie strings
-  if (cookies && Array.isArray(cookies)) {
-    const cookieObjects = cookies.map(cookieStr => {
-      const [pair] = cookieStr.split(";"); // key=value
-      const [key, value] = pair.split("=");
-      return {
-        key: key.trim(),
-        value: decodeURIComponent(value.trim()),
-        path: "/",
-        httpOnly: true,
-        secure: false,
-      };
-    });
-  
-    jar.setCookies("http://localhost:3000", cookieObjects);
-  }
-  
-  
-  
-  bru.setVar("qoute", bru.interpolate('{{$randomLoremSentence}}'));
+  bru.setVar("header", bru.interpolate('{{$randomLoremSentence}}'));
   bru.setVar("content", bru.interpolate('{{$randomLoremParagraph}}'));
 }
 
@@ -55,24 +31,24 @@ tests {
     expect(res.getStatus()).to.equal(200);
   });
   
-  test("should return the created post with correct fields", function () {
-    // ✅ response body exists
+  test("should return the created post with user info", function () {
+    // ✅ response body exists with post and user
     expect(res.body).to.exist;
-    expect(res.body.id).to.be.a("number");
-    expect(res.body.userId).to.equal(bru.getEnvVar("user_id"));
-  
-    // ✅ qoute and content match the request
-    expect(res.body.qoute).to.equal(bru.interpolate("{{qoute}}"));
-    expect(res.body.content).to.include(bru.interpolate("{{content}}"));
-  
-    // ✅ countdown fields
-    expect(res.body.isCountDown).to.be.false;
-    expect(res.body.countDownDate).to.be.null;
-  
-    // ✅ createdAt is an ISO timestamp
-    expect(res.body.createdAt).to.match(/^\d{4}-\d{2}-\d{2}T/);
+    expect(res.body.post).to.exist;
+    expect(res.body.user).to.exist;
+    
+    // ✅ post fields
+    expect(res.body.post.id).to.be.a("number");
+    expect(res.body.post.userId).to.equal(bru.getEnvVar("user_id"));
+    expect(res.body.post.header).to.equal(bru.interpolate("{{header}}"));
+    expect(res.body.post.content).to.include(bru.interpolate("{{content}}"));
+    expect(res.body.post.createdAt).to.match(/^\d{4}-\d{2}-\d{2}T/);
+    
+    // ✅ user fields
+    expect(res.body.user.id).to.equal(bru.getEnvVar("user_id"));
+    expect(res.body.user.email).to.equal(bru.getEnvVar("user_email"));
+    expect(res.body.user.name).to.equal(bru.getEnvVar("user_name"));
   });
-  
 }
 
 settings {

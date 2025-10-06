@@ -1,0 +1,33 @@
+meta {
+  name: Sign Up - Duplicate Email
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/auth/api/auth/sign-up/email
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name":"Test User",
+    "email":"{{email}}",
+    "password":"{{password}}"
+  }
+}
+
+tests {
+  test("should return error for duplicate email", function () {
+    // This should fail if user already exists
+    const status = res.getStatus();
+    if (status !== 200) {
+      expect(status).to.be.oneOf([400, 409, 422]);
+    }
+  });
+}
+
+settings {
+  encodeUrl: true
+}

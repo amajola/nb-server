@@ -47,7 +47,7 @@ start() {
         print_status "Creating pod '$POD_NAME'..."
         podman pod create \
             --name "$POD_NAME" \
-            --publish 3000:3000 \
+            --publish 8000:8000 \
             --publish 5432:5432
     else
         print_status "Pod '$POD_NAME' already exists"
@@ -72,7 +72,7 @@ start() {
             --name "$DB_CONTAINER" \
             --pod "$POD_NAME" \
             -e POSTGRES_USER=myuser \
-            -e POSTGRES_PASSWORD=mypassword \
+            -e POSTGRES_PASSWORD=mysecretpassword \
             -e POSTGRES_DB=mydb \
             -v nb-server-db-data:/var/lib/postgresql/data \
             nb-server-db:latest
@@ -100,15 +100,15 @@ start() {
         podman run -d \
             --name "$APP_CONTAINER" \
             --pod "$POD_NAME" \
-            -e DATABASE_URL=postgres://myuser:mypassword@localhost:5432/mydb \
+            -e DATABASE_URL=postgres://myuser:mysecretpassword@localhost:5432/mydb \
             -e DB_HOST=localhost \
             -e DB_USER=myuser \
-            -e DB_PASSWORD=mypassword \
+            -e DB_PASSWORD=mysecretpassword \
             -e DB_NAME=mydb \
             -e DB_PORT=5432 \
             -e NODE_ENV=production \
-            -e BETTER_AUTH_SECRET=your-32-character-secret-key-here-replace-this-in-production \
-            -e BETTER_AUTH_URL=http://localhost:3000 \
+            -e BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-9/flphrrQnDRmlcsMKCgO3tRLVrSUqnzO7iIdAXXR0s=} \
+            -e BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:8000} \
             nb-server-app:latest
     else
         print_status "Application container already running"
@@ -116,7 +116,7 @@ start() {
 
     print_status "Application stack started successfully!"
     print_status "Database available at: localhost:5432"
-    print_status "Application available at: http://localhost:3000"
+    print_status "Application available at: http://localhost:8000"
 }
 
 # Stop function

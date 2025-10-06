@@ -5,4 +5,4 @@ export const authClient = createAuthClient({
   // Add any client-specific plugins here
 });
 
-export type { Session, User } from "./auth";
+export type { Session, User } from "./auth.ts";
