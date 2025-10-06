@@ -1,39 +1,25 @@
-// context.ts
-import { drizzle } from "drizzle-orm/node-postgres";
-import { ENV } from "./env";
-import { sessionTable, userTable, type User } from "../routes/auth/schema";
-import { Client } from "pg";
-import { DrizzlePostgreSQLAdapter } from "@lucia-auth/adapter-drizzle";
-import { Lucia } from "lucia";
-import { postTable } from "../routes/posts/schema";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { ENV } from "./env.ts";
+import { userTable, sessionTable, accountTable, verificationTable } from "../routes/auth/schema.ts";
+import postgres from "postgres";
+import { postTable } from "../routes/posts/schema.ts";
 
-const client = new Client({
-  host: ENV.DB_HOST,
-  port: Number(ENV.DB_PORT),
-  user: ENV.DB_USER,
-  password: ENV.DB_PASSWORD,
-  database: ENV.DB_NAME,
-  ssl: true,
+const connectionString = `postgres://${ENV?.DB_USER}:${ENV?.DB_PASSWORD}@${ENV?.DB_HOST}:${ENV?.DB_PORT}/${ENV?.DB_NAME}`;
+
+const sql = postgres(connectionString, {
+  ssl: false, // SSL disabled for local/containerized postgres
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
 });
 
-const c = await client.connect();
-console.log(c);
-
-export const database = drizzle(client, {
-  schema: { sessionTable, userTable, postTable },
-});
-
-export const AuthAdapter = new DrizzlePostgreSQLAdapter(
-  database,
-  sessionTable,
-  userTable
-);
-
-export const lucia = new Lucia(AuthAdapter, {
-  sessionCookie: {
-    attributes: {
-      secure: ENV.NODE_ENV === "production", // set `Secure` flag in HTTPS
-    },
+export const database = drizzle(sql, {
+  schema: {
+    user: userTable,
+    session: sessionTable,
+    account: accountTable,
+    verification: verificationTable,
+    post: postTable
   },
   getUserAttributes: (attributes) => {
     return {

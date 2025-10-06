@@ -1,0 +1,56 @@
+meta {
+  name: Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/posts/create
+  body: json
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{token}}
+}
+
+body:json {
+  {
+    "header": "{{header}}",
+    "content": "{{content}}"
+  }
+}
+
+script:pre-request {
+  bru.setVar("header", bru.interpolate('{{$randomLoremSentence}}'));
+  bru.setVar("content", bru.interpolate('{{$randomLoremParagraph}}'));
+}
+
+tests {
+  test("should return 200 when creating a post", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should return the created post with user info", function () {
+    // ✅ response body exists with post and user
+    expect(res.body).to.exist;
+    expect(res.body.post).to.exist;
+    expect(res.body.user).to.exist;
+    
+    // ✅ post fields
+    expect(res.body.post.id).to.be.a("number");
+    expect(res.body.post.userId).to.equal(bru.getEnvVar("user_id"));
+    expect(res.body.post.header).to.equal(bru.interpolate("{{header}}"));
+    expect(res.body.post.content).to.include(bru.interpolate("{{content}}"));
+    expect(res.body.post.createdAt).to.match(/^\d{4}-\d{2}-\d{2}T/);
+    
+    // ✅ user fields
+    expect(res.body.user.id).to.equal(bru.getEnvVar("user_id"));
+    expect(res.body.user.email).to.equal(bru.getEnvVar("user_email"));
+    expect(res.body.user.name).to.equal(bru.getEnvVar("user_name"));
+  });
+}
+
+settings {
+  encodeUrl: false
+}

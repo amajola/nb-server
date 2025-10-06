@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  # Database service using the existing Dockerfile
+  db:
+    build:
+      context: ..
+      dockerfile: Docker/database/Dockerfile
+    container_name: nb-server-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: mydb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ..
+      dockerfile: Docker/application/Dockerfile
+    container_name: nb-server-app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://myuser:mysecretpassword@db:5432/mydb
+      DB_HOST: db
+      DB_USER: myuser
+      DB_PASSWORD: mysecretpassword
+      DB_NAME: mydb
+      DB_PORT: "5432"
+      NODE_ENV: production
+      BETTER_AUTH_SECRET: 9/flphrrQnDRmlcsMKCgO3tRLVrSUqnzO7iIdAXXR0s=
+      BETTER_AUTH_URL: http://localhost:8000
+
+volumes:
+  db_data:

@@ -1,0 +1,61 @@
+meta {
+  name: Sign In
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/auth/api/auth/sign-in/email
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  // Better-auth returns data directly (not wrapped in response)
+  if (res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+    bru.setEnvVar("auth_token", res.body.token);
+  }
+  
+  if (res.body.user) {
+    bru.setEnvVar("user_id", res.body.user.id);
+    bru.setEnvVar("user_email", res.body.user.email);
+    bru.setEnvVar("user_name", res.body.user.name);
+  }
+}
+
+tests {
+  test("status should be 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("response should have token and user info", function () {
+    const body = res.body;
+  
+    expect(body).to.exist;
+    expect(body.token).to.exist;
+    expect(body.user).to.exist;
+  
+    expect(body.user.id).to.be.a("string");
+    expect(body.user.email).to.equal(bru.interpolate("{{email}}").toLowerCase());
+    expect(body.user.name).to.equal(bru.interpolate("{{username}}"));
+  });
+  
+  test("should set session cookie", function () {
+    const cookies = res.headers["set-cookie"];
+    expect(cookies).to.exist;
+    expect(cookies).to.be.an("array");
+    expect(cookies[0]).to.include("better-auth.session_token");
+  });
+}
+
+settings {
+  encodeUrl: true
+}
