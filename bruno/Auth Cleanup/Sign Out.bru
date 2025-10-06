@@ -1,0 +1,43 @@
+meta {
+  name: Sign Out
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/auth/api/auth/sign-out
+  body: none
+  auth: inherit
+}
+
+headers {
+  Cookie: better-auth.session_token={{token}}
+}
+
+script:post-response {
+  // Clear auth tokens after sign out
+  bru.setEnvVar("token", "");
+  bru.setEnvVar("auth_token", "");
+  bru.setEnvVar("user_id", "");
+  bru.setEnvVar("user_email", "");
+  bru.setEnvVar("user_name", "");
+}
+
+tests {
+  test("status should be 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  
+  test("should clear session cookie", function () {
+    const cookies = res.headers["set-cookie"];
+    if (cookies && cookies.length > 0) {
+      expect(cookies[0]).to.satisfy(function(cookie) {
+        return cookie.includes("Max-Age=0") || cookie.includes("expires=");
+      });
+    }
+  });
+}
+
+settings {
+  encodeUrl: true
+}

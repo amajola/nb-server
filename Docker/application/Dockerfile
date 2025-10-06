@@ -1,41 +1,21 @@
-# Use the official Bun image
-# see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:1 AS base
-WORKDIR /usr/src/app
+# Use the official Deno image
+FROM denoland/deno:2.5.3
 
-# install dependencies into temp directory
-# this will cache them and speed up future builds
-FROM base AS install
-RUN mkdir -p /temp/dev
-COPY package.json bun.lock* /temp/dev/
-RUN cd /temp/dev && bun install --frozen-lockfile
-
-# install with --production (exclude devDependencies)
-RUN mkdir -p /temp/prod
-COPY package.json bun.lock* /temp/prod/
-RUN cd /temp/prod && bun install --frozen-lockfile --production
-
-# copy node_modules from temp directory
-# then copy all (non-ignored) project files into the image
-FROM base AS prerelease
-COPY --from=install /temp/dev/node_modules node_modules
-COPY . .
+# Set working directory
+WORKDIR /app
 
 # Set environment for production
 ENV NODE_ENV=production
 
-# copy production dependencies and source code into final image
-FROM base AS release
-COPY --from=install /temp/prod/node_modules node_modules
-COPY --from=prerelease /usr/src/app/src ./src
-COPY --from=prerelease /usr/src/app/package.json .
-COPY --from=prerelease /usr/src/app/drizzle.config.ts .
-COPY --from=prerelease /usr/src/app/drizzle ./drizzle
+# Copy application files
+COPY deno.json .
+COPY deno.lock* .
+COPY src ./src
+COPY drizzle.config.ts .
+COPY drizzle ./drizzle
 
-# Install drizzle-kit for migrations (needed at runtime)
-RUN bun add drizzle-kit --exact
+# Expose the application port
+EXPOSE 8000/tcp
 
-# run the app
-USER bun
-EXPOSE 3000/tcp
-CMD ["sh", "-c", "bun run migrate && bun run prod"]
+# Run migrations and start the app (dependencies will be cached on first run)
+CMD ["sh", "-c", "deno run --allow-all npm:drizzle-kit migrate && deno serve --allow-all src/index.ts"]
