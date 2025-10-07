@@ -20,6 +20,11 @@ app.use("/*", cors({
   credentials: true,
 }));
 
+// Health check endpoint
+app.get("/health", (c) => {
+  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 // Mount Better Auth on all auth routes
 app.on(["GET", "POST"], "/api/auth/*", (c) => {
   return auth.handler(c.req.raw);
