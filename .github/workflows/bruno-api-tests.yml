@@ -1,0 +1,78 @@
+name: Bruno API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Bruno CLI
+        run: npm install -g @usebruno/cli
+
+      - name: Start services with Docker Compose
+        run: docker compose -f Docker/docker-compose.yml up -d
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for database to be ready..."
+          timeout 120s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-db)" == "healthy" ]; do echo "DB Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-db)"; sleep 5; done'
+          echo "✅ Database is healthy!"
+          
+          echo "Waiting for application to be ready (migrations may take up to 3 minutes)..."
+          timeout 200s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)" == "healthy" ]; do echo "App Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)"; sleep 5; done'
+          echo "✅ Application is healthy!"
+          
+          echo "Verifying application endpoint..."
+          curl -f http://localhost:8000/health || (echo "Health check endpoint failed, trying root..."; curl -f http://localhost:8000)
+          echo "✅ Application is responding!"
+
+      - name: Run Bruno API tests
+        run: |
+          bru run --env Dev --output results.json --format json --reporter-junit results.xml --reporter-html results.html
+        working-directory: ./bruno
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-test-results
+          path: |
+            bruno/results.json
+            bruno/results.xml
+            bruno/results.html
+
+      - name: Show application logs on failure
+        if: failure()
+        run: docker compose -f Docker/docker-compose.yml logs
+
+      - name: Stop Docker Compose services
+        if: always()
+        run: docker compose -f Docker/docker-compose.yml down -v
+
+      - name: Publish test results
+        if: always() && github.event_name == 'pull_request'
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: bruno/results.xml
+          check_name: Bruno API Test Results
+        continue-on-error: true
