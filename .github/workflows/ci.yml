@@ -29,6 +29,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
       - name: Setup Deno
         uses: denoland/setup-deno@v2
         with:
@@ -47,6 +55,10 @@ jobs:
       - name: Install dependencies
         run: deno install --allow-scripts
 
+      - name: Setup PostgreSQL
+        run: |
+          sudo -u postgres psql -c "CREATE ROLE ${{ secrets.POSTGRES_USER }} WITH SUPERUSER LOGIN PASSWORD '${{ secrets.POSTGRES_PASSWORD }}';" || true
+
       - name: Setup environment variables
         run: |
           cat << EOF > .env
@@ -58,8 +70,8 @@ jobs:
 
       - name: Run database migrations
         run: |
-          deno run --allow-all npm:drizzle-kit generate
-          deno run --allow-all npm:drizzle-kit migrate
+          deno task generate
+          deno task migrate
 
       - name: Start application in background
         run: |
