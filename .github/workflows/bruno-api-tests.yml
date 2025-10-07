@@ -10,6 +10,10 @@ on:
 jobs:
   api-tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -28,23 +32,24 @@ jobs:
         env:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
 
-      - name: Wait for application to be ready
+      - name: Wait for services to be healthy
         run: |
-          echo "Waiting for database to be healthy..."
-          timeout 60 bash -c 'until docker compose -f Docker/docker-compose.yml ps | grep -q "healthy"; do sleep 2; done'
-          echo "Waiting for application to respond..."
-          timeout 60 bash -c 'until curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; do sleep 2; done'
-          sleep 5
+          echo "Waiting for database to be ready..."
+          timeout 120s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-db)" == "healthy" ]; do echo "DB Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-db)"; sleep 5; done'
+          echo "✅ Database is healthy!"
+          
+          echo "Waiting for application to be ready (migrations may take up to 3 minutes)..."
+          timeout 200s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)" == "healthy" ]; do echo "App Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)"; sleep 5; done'
+          echo "✅ Application is healthy!"
+          
+          echo "Verifying application endpoint..."
+          curl -f http://localhost:8000/health || (echo "Health check endpoint failed, trying root..."; curl -f http://localhost:8000)
+          echo "✅ Application is responding!"
 
       - name: Run Bruno API tests
-        run: bru run --env Dev --output results.json --format json
+        run: |
+          bru run --env Dev --output results.json --format json --reporter-junit results.xml --reporter-html results.html
         working-directory: ./bruno
-
-      - name: Generate test reports
-        if: always()
-        run: bru run --env Dev --reporter-junit results.xml --reporter-html results.html
-        working-directory: ./bruno
-        continue-on-error: true
 
       - name: Upload test results
         if: always()
@@ -65,8 +70,9 @@ jobs:
         run: docker compose -f Docker/docker-compose.yml down -v
 
       - name: Publish test results
-        if: always()
+        if: always() && github.event_name == 'pull_request'
         uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           files: bruno/results.xml
           check_name: Bruno API Test Results
+        continue-on-error: true
