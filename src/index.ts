@@ -11,7 +11,14 @@ export type Variables = {
 
 const app = new Hono<{ Variables: Variables }>();
 
-app.use("/*", cors());
+app.use("/*", cors({
+  origin: [
+    "http://192.168.1.34:3000",
+    "http://localhost:3000",
+    "http://no-baddies-nobaddies-brw3el-31cfe1-45-222-18-114.traefik.me"
+  ],
+  credentials: true,
+}));
 
 // Mount Better Auth on all auth routes
 app.on(["GET", "POST"], "/api/auth/*", (c) => {
