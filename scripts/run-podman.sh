@@ -41,7 +41,7 @@ container_running() {
 # Start function
 start() {
     print_status "Starting nb-server application stack..."
-    
+
     # Create pod if it doesn't exist
     if ! pod_exists; then
         print_status "Creating pod '$POD_NAME'..."
@@ -62,7 +62,7 @@ start() {
     # Build app image if needed
     if ! podman image exists nb-server-app:latest; then
         print_status "Building application image..."
-        podman build -f Docker/application/Dockerfile -t nb-server-app .
+        podman build -f Dockerfile -t nb-server-app .
     fi
 
     # Start database container
@@ -76,7 +76,7 @@ start() {
             -e POSTGRES_DB=mydb \
             -v nb-server-db-data:/var/lib/postgresql/data \
             nb-server-db:latest
-        
+
         # Wait for database to be ready
         print_status "Waiting for database to be ready..."
         for i in {1..30}; do
@@ -122,24 +122,24 @@ start() {
 # Stop function
 stop() {
     print_status "Stopping nb-server application stack..."
-    
+
     if container_running "$APP_CONTAINER"; then
         print_status "Stopping application container..."
         podman container stop "$APP_CONTAINER"
         podman container rm "$APP_CONTAINER"
     fi
-    
+
     if container_running "$DB_CONTAINER"; then
         print_status "Stopping database container..."
         podman container stop "$DB_CONTAINER"
         podman container rm "$DB_CONTAINER"
     fi
-    
+
     if pod_exists; then
         print_status "Removing pod..."
         podman pod rm "$POD_NAME"
     fi
-    
+
     print_status "Application stack stopped"
 }
 
@@ -166,7 +166,7 @@ logs() {
 # Status function
 status() {
     print_status "Checking status of nb-server stack..."
-    
+
     if pod_exists; then
         echo "Pod Status:"
         podman pod ps --filter name="$POD_NAME"
@@ -201,7 +201,7 @@ build() {
     print_status "Building database image..."
     podman build -f Docker/database/Dockerfile -t nb-server-db .
     print_status "Building application image..."
-    podman build -f Docker/application/Dockerfile -t nb-server-app .
+    podman build -f Dockerfile -t nb-server-app .
     print_status "Build completed"
 }
 

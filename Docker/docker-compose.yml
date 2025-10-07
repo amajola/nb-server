@@ -24,7 +24,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: Docker/application/Dockerfile
+      dockerfile: Dockerfile
     container_name: nb-server-app
     ports:
       - "8000:8000"
