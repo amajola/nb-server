@@ -1,0 +1,67 @@
+name: Bruno API Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start services with Docker Compose
+        run: docker compose -f Docker/docker-compose.yml up -d
+        env:
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+
+      - name: Wait for application to be ready
+        run: |
+          echo "Waiting for database to be healthy..."
+          timeout 60 bash -c 'until docker compose -f Docker/docker-compose.yml ps | grep -q "healthy"; do sleep 2; done'
+          echo "Waiting for application to respond..."
+          timeout 60 bash -c 'until curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; do sleep 2; done'
+          sleep 5
+
+      - name: Install Bruno CLI
+        run: npm install -g @usebruno/cli
+
+      - name: Run Bruno API tests
+        run: bru run --env Dev --output results.json --format json
+        working-directory: ./bruno
+
+      - name: Generate test reports
+        if: always()
+        run: bru run --env Dev --reporter-junit results.xml --reporter-html results.html
+        working-directory: ./bruno
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bruno-test-results
+          path: |
+            bruno/results.json
+            bruno/results.xml
+            bruno/results.html
+
+      - name: Show application logs on failure
+        if: failure()
+        run: docker compose -f Docker/docker-compose.yml logs
+
+      - name: Stop Docker Compose services
+        if: always()
+        run: docker compose -f Docker/docker-compose.yml down -v
+
+      - name: Publish test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: bruno/results.xml
+          check_name: Bruno API Test Results
