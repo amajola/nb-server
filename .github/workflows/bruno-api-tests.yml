@@ -40,7 +40,7 @@ jobs:
 
       - name: Create .env file for Docker Compose
         run: |
-          cat > Docker/.env << EOF
+          cat > .env << EOF
           POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
           POSTGRES_USER=${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
@@ -52,12 +52,23 @@ jobs:
           BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
           NODE_ENV=production
           EOF
-          echo "✅ .env file created"
+          echo "✅ .env file created in repo root"
           echo "Verifying .env file (secrets masked):"
-          cat Docker/.env | sed 's/=.*/=***/'
+          cat .env | sed 's/=.*/=***/'
 
       - name: Start services with Docker Compose
-        run: docker compose --env-file Docker/.env -f Docker/docker-compose.yml up -d
+        run: docker compose -f Docker/docker-compose.yml up -d --build
+
+      - name: Check environment variables in container
+        run: |
+          echo "Waiting 10 seconds for container to initialize..."
+          sleep 10
+          echo "Checking environment variables in app container:"
+          docker exec nb-server-app sh -c 'echo "POSTGRES_USER=$POSTGRES_USER"'
+          docker exec nb-server-app sh -c 'echo "POSTGRES_DB=$POSTGRES_DB"'
+          docker exec nb-server-app sh -c 'echo "DATABASE_URL=$DATABASE_URL"'
+          docker exec nb-server-app sh -c 'echo "DB_USER=$DB_USER"'
+          docker exec nb-server-app sh -c 'echo "DB_PASSWORD length: ${#DB_PASSWORD}"'
 
       - name: Wait for services to be healthy
         run: |
