@@ -27,6 +27,17 @@ jobs:
       - name: Install Bruno CLI
         run: npm install -g @usebruno/cli
 
+      - name: Verify secrets are set
+        run: |
+          echo "Checking if secrets are available..."
+          if [ -z "${{ secrets.POSTGRES_USER }}" ]; then echo "❌ POSTGRES_USER is not set"; exit 1; fi
+          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then echo "❌ POSTGRES_PASSWORD is not set"; exit 1; fi
+          if [ -z "${{ secrets.POSTGRES_DB }}" ]; then echo "❌ POSTGRES_DB is not set"; exit 1; fi
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then echo "❌ JWT_SECRET is not set"; exit 1; fi
+          if [ -z "${{ secrets.ENCRYPTION_KEY }}" ]; then echo "❌ ENCRYPTION_KEY is not set"; exit 1; fi
+          if [ -z "${{ secrets.BETTER_AUTH_SECRET }}" ]; then echo "❌ BETTER_AUTH_SECRET is not set"; exit 1; fi
+          echo "✅ All required secrets are set"
+
       - name: Create .env file for Docker Compose
         run: |
           cat > Docker/.env << EOF
@@ -41,6 +52,9 @@ jobs:
           BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
           NODE_ENV=production
           EOF
+          echo "✅ .env file created"
+          echo "Verifying .env file (secrets masked):"
+          cat Docker/.env | sed 's/=.*/=***/'
 
       - name: Start services with Docker Compose
         run: docker compose --env-file Docker/.env -f Docker/docker-compose.yml up -d
