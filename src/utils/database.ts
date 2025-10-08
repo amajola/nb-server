@@ -4,9 +4,14 @@ import { userTable, sessionTable, accountTable, verificationTable } from "../rou
 import postgres from "postgres";
 import { postTable } from "../routes/posts/schema.ts";
 
-const connectionString = `postgres://${ENV?.DB_USER}:${ENV?.DB_PASSWORD}@${ENV?.DB_HOST}:${ENV?.DB_PORT}/${ENV?.DB_NAME}`;
-
-const sql = postgres(connectionString, {
+// Use individual connection parameters instead of connection string
+// because Deno's URL parsing has issues with some password characters
+const sql = postgres({
+  host: ENV.POSTGRES_HOST,
+  port: parseInt(ENV.POSTGRES_PORT),
+  user: ENV.POSTGRES_USER,
+  password: ENV.POSTGRES_PASSWORD,
+  database: ENV.POSTGRES_DB,
   ssl: false, // SSL disabled for local/containerized postgres
   max: 10,
   idle_timeout: 20,
