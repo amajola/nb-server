@@ -30,6 +30,7 @@ jobs:
       - name: Start services with Docker Compose
         run: docker compose -f Docker/docker-compose.yml up -d
         env:
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
@@ -47,8 +48,30 @@ jobs:
           echo "✅ Database is healthy!"
           
           echo "Waiting for application to be ready (migrations may take up to 3 minutes)..."
-          timeout 200s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)" == "healthy" ]; do echo "App Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)"; sleep 5; done'
-          echo "✅ Application is healthy!"
+          for i in {1..40}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' nb-server-app)
+            echo "App Status: $STATUS (attempt $i/40)"
+            
+            if [ "$STATUS" == "healthy" ]; then
+              echo "✅ Application is healthy!"
+              break
+            fi
+            
+            if [ "$STATUS" == "unhealthy" ] && [ $i -gt 10 ]; then
+              echo "⚠️ Application unhealthy, showing logs..."
+              docker compose -f Docker/docker-compose.yml logs app --tail 50
+            fi
+            
+            sleep 5
+          done
+          
+          # Final check
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' nb-server-app)
+          if [ "$STATUS" != "healthy" ]; then
+            echo "❌ Application failed to become healthy"
+            docker compose -f Docker/docker-compose.yml logs app
+            exit 1
+          fi
           
           echo "Verifying application endpoint..."
           curl -f http://localhost:8000/health || (echo "Health check endpoint failed, trying root..."; curl -f http://localhost:8000)
