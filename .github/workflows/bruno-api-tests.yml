@@ -30,7 +30,15 @@ jobs:
       - name: Start services with Docker Compose
         run: docker compose -f Docker/docker-compose.yml up -d
         env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+          NODE_ENV: production
 
       - name: Wait for services to be healthy
         run: |
