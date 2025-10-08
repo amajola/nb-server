@@ -27,10 +27,66 @@ jobs:
       - name: Install Bruno CLI
         run: npm install -g @usebruno/cli
 
+      - name: Verify secrets are set
+        run: |
+          echo "Checking if secrets are available..."
+          if [ -z "${{ secrets.POSTGRES_USER }}" ]; then echo "❌ POSTGRES_USER is not set"; exit 1; fi
+          if [ -z "${{ secrets.POSTGRES_PASSWORD }}" ]; then echo "❌ POSTGRES_PASSWORD is not set"; exit 1; fi
+          if [ -z "${{ secrets.POSTGRES_DB }}" ]; then echo "❌ POSTGRES_DB is not set"; exit 1; fi
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then echo "❌ JWT_SECRET is not set"; exit 1; fi
+          if [ -z "${{ secrets.ENCRYPTION_KEY }}" ]; then echo "❌ ENCRYPTION_KEY is not set"; exit 1; fi
+          if [ -z "${{ secrets.BETTER_AUTH_SECRET }}" ]; then echo "❌ BETTER_AUTH_SECRET is not set"; exit 1; fi
+          echo "✅ All required secrets are set"
+
+      - name: Create .env file for Docker Compose
+        run: |
+          cat > .env << EOF
+          POSTGRES_HOST=${{ secrets.POSTGRES_HOST }}
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+          BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL=${{ secrets.BETTER_AUTH_URL }}
+          NODE_ENV=production
+          EOF
+          echo "✅ .env file created in repo root"
+          echo "Verifying .env file (secrets masked):"
+          cat .env | sed 's/=.*/=***/'
+
       - name: Start services with Docker Compose
-        run: docker compose -f Docker/docker-compose.yml up -d
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Checking if .env file exists:"
+          ls -la .env || echo ".env file not found!"
+          echo "Contents of .env (masked):"
+          cat .env | sed 's/=.*/=***/' || echo "Could not read .env"
+          echo "Starting docker compose..."
+          docker compose -f Docker/docker-compose.yml up -d --build
         env:
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+          NODE_ENV: production
+
+      - name: Check environment variables in container
+        run: |
+          echo "Waiting 10 seconds for container to initialize..."
+          sleep 10
+          echo "Checking environment variables in app container:"
+          docker exec nb-server-app sh -c 'echo "POSTGRES_USER=$POSTGRES_USER"'
+          docker exec nb-server-app sh -c 'echo "POSTGRES_DB=$POSTGRES_DB"'
+          docker exec nb-server-app sh -c 'echo "DATABASE_URL=$DATABASE_URL"'
+          docker exec nb-server-app sh -c 'echo "DB_USER=$DB_USER"'
+          docker exec nb-server-app sh -c 'echo "DB_PASSWORD length: ${#DB_PASSWORD}"'
 
       - name: Wait for services to be healthy
         run: |
@@ -39,8 +95,30 @@ jobs:
           echo "✅ Database is healthy!"
           
           echo "Waiting for application to be ready (migrations may take up to 3 minutes)..."
-          timeout 200s bash -c 'until [ "$(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)" == "healthy" ]; do echo "App Status: $(docker inspect --format='\''{{.State.Health.Status}}'\'' nb-server-app)"; sleep 5; done'
-          echo "✅ Application is healthy!"
+          for i in {1..40}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' nb-server-app)
+            echo "App Status: $STATUS (attempt $i/40)"
+            
+            if [ "$STATUS" == "healthy" ]; then
+              echo "✅ Application is healthy!"
+              break
+            fi
+            
+            if [ "$STATUS" == "unhealthy" ] && [ $i -gt 10 ]; then
+              echo "⚠️ Application unhealthy, showing logs..."
+              docker compose -f Docker/docker-compose.yml logs app --tail 50
+            fi
+            
+            sleep 5
+          done
+          
+          # Final check
+          STATUS=$(docker inspect --format='{{.State.Health.Status}}' nb-server-app)
+          if [ "$STATUS" != "healthy" ]; then
+            echo "❌ Application failed to become healthy"
+            docker compose -f Docker/docker-compose.yml logs app
+            exit 1
+          fi
           
           echo "Verifying application endpoint..."
           curl -f http://localhost:8000/health || (echo "Health check endpoint failed, trying root..."; curl -f http://localhost:8000)

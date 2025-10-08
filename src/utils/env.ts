@@ -5,12 +5,14 @@ import { load } from "@std/dotenv";
 await load({ export: true });
 
 const envSchema = z.object({
-  DB_HOST: z.string(),
-  DB_USER: z.string(),
-  DB_PASSWORD: z.string(),
-  DB_NAME: z.string(),
-  DB_PORT: z.string(),
-  NODE_ENV: z.enum(["development", "production", "test"]),
+  POSTGRES_HOST: z.string(),
+  POSTGRES_USER: z.string(),
+  POSTGRES_PASSWORD: z.string(),
+  POSTGRES_DB: z.string(),
+  POSTGRES_PORT: z.string(),
+  NODE_ENV: z.enum(["development", "production", "test", "github_action"]),
+  JWT_SECRET: z.string(),
+  ENCRYPTION_KEY: z.string(),
   BETTER_AUTH_SECRET: z.string().min(32), // Required for Better Auth
   BETTER_AUTH_URL: z.string().url().optional(), // Optional, defaults to localhost in dev
 });

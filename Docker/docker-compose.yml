@@ -7,15 +7,15 @@ services:
     container_name: nb-server-db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: mydb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      test: ["CMD-SHELL", "pg_isready -U nbadmin -d nobaddies_db"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -33,15 +33,16 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://myuser:mysecretpassword@db:5432/mydb
-      DB_HOST: db
-      DB_USER: myuser
-      DB_PASSWORD: mysecretpassword
-      DB_NAME: mydb
-      DB_PORT: "5432"
-      NODE_ENV: production
-      BETTER_AUTH_SECRET: 9/flphrrQnDRmlcsMKCgO3tRLVrSUqnzO7iIdAXXR0s=
-      BETTER_AUTH_URL: http://localhost:8000
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: "5432"
+      NODE_ENV: ${NODE_ENV:-production}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8000}
     healthcheck:
       test: ["CMD-SHELL", "deno eval 'fetch(\"http://localhost:8000/health\").then(r => r.ok ? Deno.exit(0) : Deno.exit(1)).catch(() => Deno.exit(1))'"]
       interval: 10s
